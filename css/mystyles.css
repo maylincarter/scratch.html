@@ -1,0 +1,131 @@
+/* --- 1. Variables & Global Settings --- */
+:root {
+  /* Define the main color once here */
+  --main-theme-color: darkslategray; 
+  
+  /* Bootstrap Override */
+  --bs-link-hover-color: var(--main-theme-color);
+}
+
+/* --- 2. Base Layout --- */
+body {
+  background-color:lightgoldenrodyellow
+}
+
+a {
+  color: var(--main-theme-color);
+}
+
+/* --- 3. Typography Overrides --- */
+/* Groups all headers together for cleaner reading */
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+  font-family: unset !important;
+}
+
+/* --- 4. Bootstrap Utility Overrides --- */
+.bg-primary {
+  background-color: var(--main-theme-color) !important;
+}
+
+.text-primary {
+  --bs-text-opacity: 1;
+  color: var(--main-theme-color) !important;
+}
+
+/* --- 5. Component Styles --- */
+.social-icons .social-icon:hover {
+  background-color: var(--main-theme-color);
+}
+
+.btn {
+  display: inline-block; /* Makes it respect padding/margins */
+  background-color: darkslateblue;
+  color: white;
+  padding: 10px 20px;
+  text-decoration: none; /* Removes the underline */
+  border-radius: 5px;    /* Rounded corners */
+  transition: background-color 0.3s; /* Smooth color change */
+}
+
+.btn:hover {
+  background-color: #2f4f4f; /* Slightly darker on hover */
+}
+
+/* ===================== Scratch Page – Simple Tweaks ===================== */
+
+/* Set a simple readable font for the whole page */
+.scratch-page {
+    font-family: "Saira Extra Condensed", sans-serif; /* matches resume */
+    text-align: center; /* Centers all text unless overridden below */
+}
+
+.scratch-page h1 {
+    font-size: 2.5em;
+    margin-bottom: 0.2em;
+    color: black;
+}
+
+.scratch-page h2 {
+    color: darkslateblue;
+    font: italic 1.5em "Saira Extra Condensed", sans-serif; /* matches resume */
+    margin-bottom: 0.4em;
+}
+
+Keep lists left-aligned even though the page is centered
+.scratch-page ul,
+.scratch-page li {
+    text-align: left;
+    margin: 0 auto;
+    max-width: 500px; /* keeps lists neat, not full width */
+    padding: 5px;
+}
+
+.scratch-page .text-box {
+    padding: 12px 32px;
+    border: 3px solid darkslateblue;
+    max-width: 300px;
+    margin: 0 auto; /* centers the box */
+    background-color: #f0f8ff; /* light background for contrast */
+}
+
+/* Headings centered and clean */
+.scratch-page h1,
+.scratch-page h2,
+.scratch-page h3 {
+    text-align: center;
+    font-family: "Saira Extra Condensed", sans-serif; /* matches resume */
+}
+
+/* Paragraphs with good line spacing */
+.scratch-page p {
+    line-height: 1.6;
+    margin: 0 auto;
+    max-width: 700px; /* keeps paragraphs neat, not full width */
+}
+
+/* Center the video + images nicely */
+.scratch-page iframe {
+    display: block;
+    margin: 0 auto;
+}
+
+.scratch-page .gallery-img {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.scratch-page .tableau-graph {
+    max-width: 800px;   /* controls width */
+    margin: 30px auto;  /* centers it */
+}
+
+.scratch-page .tableau-graph iframe,
+.scratch-page .tableau-graph object {
+    width: 100%;
+    height: 450px;      /* controls height */
+}
+.scratch-page .btn {
+    margin-top: 15px;
+}
+

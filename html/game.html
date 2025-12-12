@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Beach Runner</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            /* Default: Morning Sky */
+            background: linear-gradient(to bottom, #2980b9 0%, #6dd5fa 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none;
+            transition: background 2s ease-in-out;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            box-shadow: 0 0 50px rgba(0,0,0,0.3);
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        #score-board {
+            padding: 20px;
+            font-size: 20px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            width: 90%;
+            margin: 0 auto;
+            align-items: center;
+        }
+
+        .hud-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .hud-item {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .high-score-label {
+            color: #ffd700; /* Gold color */
+        }
+        
+        #mute-btn {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            font-size: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        #mute-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        #start-screen, #game-over-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(5px);
+            pointer-events: auto;
+            border: 2px solid rgba(255,255,255,0.3);
+            min-width: 280px;
+        }
+
+        h1 { margin: 0 0 10px 0; font-size: 40px; }
+        p { font-size: 18px; margin: 5px 0; }
+        
+        button.action-btn {
+            margin-top: 20px;
+            padding: 10px 30px;
+            font-size: 20px;
+            background: #ff9966;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: transform 0.1s;
+            box-shadow: 0 4px 0 #cc5200;
+        }
+
+        button.action-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #cc5200;
+        }
+
+        .hidden { display: none !important; }
+        
+        .new-record {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 22px;
+            animation: pulse 1s infinite;
+            margin-top: 10px;
+            display: block;
+        }
+
+        /* Notification for Zone Change */
+        #zone-notification {
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 32px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 10px rgba(0,0,0,0.5);
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+            text-align: center;
+            width: 100%;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .cloud {
+            position: absolute;
+            top: 50px;
+            background: rgba(255,255,255,0.7);
+            border-radius: 20px;
+            pointer-events: none;
+            animation: drift linear infinite;
+        }
+
+        @keyframes drift {
+            from { transform: translateX(110vw); }
+            to { transform: translateX(-20vw); }
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="clouds"></div>
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="ui-layer">
+        <div id="score-board">
+            <div class="hud-group">
+                <div class="hud-item">Score: <span id="score">0</span></div>
+            </div>
+            <div class="hud-group">
+                <div class="hud-item high-score-label">Best: <span id="high-score-display">0</span></div>
+                <button id="mute-btn">🔊</button>
+            </div>
+        </div>
+        <div id="zone-notification">New Time of Day!</div>
+    </div>
+
+    <div id="start-screen">
+        <h1>Beach Runner 🏃‍♀️</h1>
+        <p>Up/Tap = Jump | Down/Swipe = Slide</p>
+        <p>⚠️ Watch out for flying Seagulls!</p>
+        <button id="start-btn" class="action-btn">Start Running</button>
+    </div>
+
+    <div id="game-over-screen" class="hidden">
+        <h1>Wipeout! 🏖️</h1>
+        <p>Score: <span id="final-score">0</span></p>
+        <span id="new-record-msg" class="new-record hidden">🏆 NEW RECORD! 🏆</span>
+        <button id="restart-btn" class="action-btn">Try Again</button>
+    </div>
+</div>
+
+<script>
+    // --- Config & State ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // UI Elements
+    const scoreEl = document.getElementById('score');
+    const highScoreEl = document.getElementById('high-score-display');
+    const finalScoreEl = document.getElementById('final-score');
+    const newRecordMsg = document.getElementById('new-record-msg');
+    const muteBtn = document.getElementById('mute-btn');
+    const zoneNotif = document.getElementById('zone-notification');
+    
+    const startScreen = document.getElementById('start-screen');
+    const gameOverScreen = document.getElementById('game-over-screen');
+    const startBtn = document.getElementById('start-btn');
+    const restartBtn = document.getElementById('restart-btn');
+
+    let animationId;
+    let gameSpeed = 5;
+    let score = 0;
+    let isMuted = false;
+    
+    let highScore = parseInt(localStorage.getItem('beachRunnerHighScore')) || 0;
+    highScoreEl.innerText = highScore;
+
+    let obstaclesPassed = 0;
+    let isGameOver = false;
+    let isPlaying = false;
+    let frames = 0;
+
+    // Background Zones Configuration (Time of Day)
+    const ZONES = [
+        { threshold: 0, name: "Morning Sun", gradient: "linear-gradient(to bottom, #2980b9 0%, #6dd5fa 100%)" },
+        { threshold: 10, name: "Mid-day Heat", gradient: "linear-gradient(to bottom, #FF8008 0%, #FFC837 100%)" },
+        { threshold: 20, name: "Golden Hour", gradient: "linear-gradient(to bottom, #fc4a1a 0%, #f7b733 100%)" },
+        { threshold: 30, name: "Twilight", gradient: "linear-gradient(to bottom, #2c3e50 0%, #4ca1af 100%)" },
+        { threshold: 40, name: "Starry Night", gradient: "linear-gradient(to bottom, #0f2027 0%, #203a43 50%, #2c5364 100%)" }
+    ];
+    let currentZoneIndex = 0;
+
+    // Physics
+    const GRAVITY = 0.8;
+    const JUMP_FORCE = -15;
+    const GROUND_HEIGHT = 60;
+
+    // Entity Settings
+    let player = {
+        x: 50, y: 0, 
+        width: 40, height: 40, 
+        originalHeight: 40, duckHeight: 20,
+        dy: 0,
+        isJumping: false, 
+        isDucking: false,
+        sprite: "🏃‍♀️", 
+        hasShield: false, invincibleTimer: 0,
+        slideTimer: 0 // For mobile swipe duration
+    };
+
+    let obstacles = [];
+    // Added movement types
+    const OBSTACLE_TYPES = [
+        { emoji: "🚯", yOffset: 0, width: 25, height: 25, type: 'static' }, // Trash
+        { emoji: "🦀", yOffset: 0, width: 30, height: 25, type: 'static' }, // Crab
+        { emoji: "😴", yOffset: 0, width: 50, height: 25, type: 'static' }, // Sleeper
+        { emoji: "⛱️", yOffset: 15, width: 45, height: 50, type: 'static' }, // Umbrella
+        { emoji: "🏐", yOffset: 0, width: 30, height: 30, type: 'bounce' }, // Beach Ball (New)
+        { emoji: "🐦", yOffset: 50, width: 35, height: 20, type: 'flyer' }   // Seagull (New - High)
+    ];
+
+    let powerups = [];
+    let particles = []; 
+
+    // --- Audio System ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let sonarOsc, sonarGain, musicOsc, musicGain;
+
+    muteBtn.addEventListener('click', () => {
+        isMuted = !isMuted;
+        muteBtn.innerText = isMuted ? "🔇" : "🔊";
+        if (isMuted && audioCtx.state === 'running') audioCtx.suspend();
+        else if (!isMuted && audioCtx.state === 'suspended') audioCtx.resume();
+    });
+
+    function initAudio() {
+        if (!sonarOsc) {
+            sonarOsc = audioCtx.createOscillator();
+            sonarGain = audioCtx.createGain();
+            sonarOsc.type = 'square';
+            sonarOsc.connect(sonarGain);
+            sonarGain.connect(audioCtx.destination);
+            sonarGain.gain.value = 0; 
+            sonarOsc.start();
+
+            musicOsc = audioCtx.createOscillator();
+            musicGain = audioCtx.createGain();
+            musicOsc.type = 'sine';
+            musicOsc.frequency.value = 100; 
+            musicOsc.connect(musicGain);
+            musicGain.connect(audioCtx.destination);
+            musicGain.gain.value = 0; 
+            musicOsc.start();
+        }
+    }
+
+    function updateAudioCue() {
+        if (isMuted || isGameOver) {
+            if (sonarGain) sonarGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+            if (musicGain) musicGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+            return;
+        }
+
+        if (musicGain) {
+            const time = audioCtx.currentTime;
+            const wave = (Math.sin(time * 2) + 1) * 0.05; 
+            musicGain.gain.setTargetAtTime(wave, time, 0.1);
+        }
+
+        let closestObs = null;
+        let minDist = Infinity;
+        for (let obs of obstacles) {
+            let dist = obs.x - (player.x + player.width);
+            if (dist > 0 && dist < minDist) {
+                minDist = dist;
+                closestObs = obs;
+            }
+        }
+
+        const sonarRange = 500;
+        if (closestObs && minDist < sonarRange) {
+            const proximity = 1 - (minDist / sonarRange);
+            const pitch = 300 + (proximity * 500);
+            const vol = Math.pow(proximity, 3) * 0.1; 
+            sonarOsc.frequency.setTargetAtTime(pitch, audioCtx.currentTime, 0.05);
+            sonarGain.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.05);
+        } else {
+            sonarGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+        }
+    }
+    
+    function playSound(type) {
+        if (isMuted) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+
+        if (type === 'jump') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(300, now);
+            osc.frequency.linearRampToValueAtTime(600, now + 0.1);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+            osc.start();
+            osc.stop(now + 0.15);
+        } else if (type === 'duck') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(400, now);
+            osc.frequency.linearRampToValueAtTime(200, now + 0.1);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+            osc.start();
+            osc.stop(now + 0.15);
+        } else if (type === 'score') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800, now);
+            osc.frequency.setValueAtTime(1200, now + 0.1);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.linearRampToValueAtTime(0, now + 0.2);
+            osc.start();
+            osc.stop(now + 0.2);
+        } else if (type === 'levelup') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(440, now); // A4
+            osc.frequency.setValueAtTime(554, now + 0.1); // C#5
+            osc.frequency.setValueAtTime(659, now + 0.2); // E5
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.linearRampToValueAtTime(0, now + 0.6);
+            osc.start();
+            osc.stop(now + 0.6);
+        } else if (type === 'hit') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(100, now);
+            osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+            osc.start();
+            osc.stop(now + 0.2);
+        } else if (type === 'shield-get') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, now);
+            osc.frequency.linearRampToValueAtTime(1000, now + 0.1);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.linearRampToValueAtTime(0, now + 0.2);
+            osc.start();
+            osc.stop(now + 0.2);
+        } else if (type === 'shield-break') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(200, now);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            osc.start();
+            osc.stop(now + 0.1);
+        }
+    }
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        player.x = canvas.width * 0.1; 
+        if (player.y > canvas.height - GROUND_HEIGHT) {
+            player.y = canvas.height - GROUND_HEIGHT - player.height;
+        }
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // --- Input Handling ---
+    let touchStartY = 0;
+
+    function handleJump() {
+        if (!isPlaying) return;
+        if (!player.isJumping && !player.isDucking) {
+            player.dy = JUMP_FORCE;
+            player.isJumping = true;
+            createParticles(player.x + player.width/2, player.y + player.height, 5, "sand");
+            playSound('jump');
+        }
+    }
+
+    function startDuck() {
+        if (!isPlaying || player.isJumping) return;
+        if (!player.isDucking) {
+            player.isDucking = true;
+            player.height = player.duckHeight;
+            player.y = canvas.height - GROUND_HEIGHT - player.height;
+            playSound('duck');
+            // Create "slide" particles
+            createParticles(player.x, player.y + player.height, 3, "sand");
+        }
+    }
+
+    function endDuck() {
+        if (player.isDucking) {
+            player.isDucking = false;
+            player.height = player.originalHeight;
+            player.y = canvas.height - GROUND_HEIGHT - player.height;
+        }
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' || e.code === 'ArrowUp') {
+            e.preventDefault(); 
+            if (isGameOver) resetGame();
+            else if (!isPlaying && startScreen.classList.contains('hidden') === false) startGame();
+            else handleJump();
+        } else if (e.code === 'ArrowDown') {
+            e.preventDefault();
+            if (isPlaying) startDuck();
+        }
+    });
+
+    window.addEventListener('keyup', (e) => {
+        if (e.code === 'ArrowDown') {
+            endDuck();
+        }
+    });
+
+    // Touch Support (Swipe)
+    window.addEventListener('touchstart', (e) => {
+        touchStartY = e.touches[0].clientY;
+        if (isGameOver) resetGame();
+        else if (!isPlaying && startScreen.classList.contains('hidden') === false) startGame();
+    }, {passive: false});
+
+    window.addEventListener('touchend', (e) => {
+        const touchEndY = e.changedTouches[0].clientY;
+        const diff = touchEndY - touchStartY;
+
+        if (Math.abs(diff) < 30) {
+            // Tap -> Jump
+            handleJump();
+        } else if (diff > 0) {
+            // Swipe Down -> Slide (Temporary)
+            startDuck();
+            player.slideTimer = 40; // Slide for 40 frames on mobile
+        } else {
+            // Swipe Up -> Jump
+            handleJump();
+        }
+    }, {passive: false});
+
+    startBtn.addEventListener('click', () => {
+        initAudio();
+        if (audioCtx.state === 'suspended' && !isMuted) audioCtx.resume();
+        startGame();
+    });
+    restartBtn.addEventListener('click', resetGame);
+
+    function createClouds() {
+        const container = document.getElementById('clouds');
+        container.innerHTML = '';
+        const cloudCount = 5;
+        for (let i = 0; i < cloudCount; i++) {
+            const b = document.createElement('div');
+            b.classList.add('cloud');
+            b.style.top = (Math.random() * 30) + '%';
+            b.style.width = (Math.random() * 100 + 50) + 'px';
+            b.style.height = (Math.random() * 30 + 20) + 'px';
+            b.style.animationDuration = (Math.random() * 20 + 20) + 's';
+            b.style.animationDelay = (Math.random() * -20) + 's';
+            container.appendChild(b);
+        }
+    }
+    createClouds();
+
+    // --- Logic ---
+    function setZone(index) {
+        if (index >= ZONES.length) return;
+        currentZoneIndex = index;
+        document.body.style.background = ZONES[index].gradient;
+        
+        // Show Notification
+        zoneNotif.innerText = `${ZONES[index].name}`;
+        zoneNotif.style.opacity = 1;
+        setTimeout(() => { zoneNotif.style.opacity = 0; }, 2000);
+        
+        if (index > 0) playSound('levelup');
+    }
+
+    function startGame() {
+        startScreen.classList.add('hidden');
+        gameOverScreen.classList.add('hidden');
+        newRecordMsg.classList.add('hidden');
+        
+        isPlaying = true;
+        isGameOver = false;
+        
+        score = 0;
+        obstaclesPassed = 0;
+        gameSpeed = 6;
+        obstacles = [];
+        powerups = [];
+        particles = [];
+        frames = 0;
+        
+        player.y = canvas.height - GROUND_HEIGHT - player.originalHeight;
+        player.height = player.originalHeight;
+        player.dy = 0;
+        player.isJumping = false;
+        player.isDucking = false;
+        player.hasShield = false;
+        player.invincibleTimer = 0;
+
+        // Reset Zone
+        currentZoneIndex = 0;
+        setZone(0);
+
+        updateUI();
+        animate();
+    }
+
+    function resetGame() {
+        startGame();
+    }
+
+    function updateUI() {
+        scoreEl.innerText = score;
+    }
+
+    function checkZoneChange() {
+        // Check if next zone threshold is met
+        const nextIndex = currentZoneIndex + 1;
+        if (nextIndex < ZONES.length && score >= ZONES[nextIndex].threshold) {
+            setZone(nextIndex);
+            gameSpeed += 1; // Increase speed slightly with new zone
+        }
+    }
+
+    function createParticles(x, y, count, type = "sand") {
+        for (let i = 0; i < count; i++) {
+            particles.push({
+                x: x, y: y, vx: (Math.random() - 0.5) * 6, vy: (Math.random() * -3), // Particles fly up
+                life: 1.0, type: type
+            });
+        }
+    }
+
+    function spawnObstacle() {
+        const minGap = 250 + (gameSpeed * 10); 
+        let lastObstacleX = obstacles.length > 0 ? obstacles[obstacles.length-1].x : 0;
+        if (canvas.width - lastObstacleX > minGap) {
+            if (Math.random() < 0.03) { // Slightly increased spawn rate
+                const type = OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)];
+                
+                let startY = canvas.height - GROUND_HEIGHT - type.height - type.yOffset;
+                let startVX = 0;
+                let startVY = 0;
+
+                // Unique Motion Logic
+                if (type.type === 'flyer') {
+                    // Start a bit higher or specific offset
+                    startVX = 3; // Moves faster than scroll
+                } else if (type.type === 'bounce') {
+                     startVX = 2; 
+                     startVY = -5; // Initial bounce
+                }
+
+                obstacles.push({
+                    x: canvas.width,
+                    y: startY,
+                    width: type.width, height: type.height, 
+                    emoji: type.emoji, 
+                    type: type.type,
+                    vx: startVX, vy: startVY,
+                    groundY: startY, // Remember ground line for bouncing
+                    passed: false
+                });
+            }
+        }
+    }
+
+    function spawnPowerup() {
+        if (frames % 200 === 0 && Math.random() < 0.4) {
+             const heights = [60, 110, 150];
+             const yPos = canvas.height - GROUND_HEIGHT - heights[Math.floor(Math.random()*heights.length)];
+             powerups.push({ x: canvas.width, y: yPos, width: 35, height: 35, emoji: "👒" });
+        }
+    }
+
+    function checkCollision(e1, e2, pad) {
+        return (e1.x < e2.x + e2.width - pad && e1.x + e1.width > e2.x + pad &&
+                e1.y < e2.y + e2.height - pad && e1.y + e1.height > e2.y + pad);
+    }
+
+    function update() {
+        frames++;
+        updateAudioCue();
+
+        // 1. Player Physics
+        if (player.slideTimer > 0) {
+            player.slideTimer--;
+            if (player.slideTimer <= 0) endDuck();
+            else if (frames % 5 === 0) createParticles(player.x, player.y + player.height, 1, "sand");
+        }
+
+        if (!player.isDucking) {
+            player.dy += GRAVITY;
+            player.y += player.dy;
+            const floorY = canvas.height - GROUND_HEIGHT - player.height;
+            
+            if (player.y > floorY) {
+                player.y = floorY; 
+                player.dy = 0; 
+                player.isJumping = false;
+            }
+        } else {
+            // Keep ducking player on ground
+            player.y = canvas.height - GROUND_HEIGHT - player.height;
+        }
+        
+        if (player.invincibleTimer > 0) player.invincibleTimer--;
+
+        // 2. Spawn
+        spawnObstacle();
+        spawnPowerup();
+
+        // 3. Move Obstacles
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            let obs = obstacles[i];
+            
+            // Base movement (scroll)
+            obs.x -= gameSpeed;
+            
+            // Independent movement
+            if (obs.type === 'flyer') {
+                obs.x -= obs.vx; // Fly faster to left
+                obs.y += Math.sin(frames * 0.1) * 2; // Bob up and down
+            } else if (obs.type === 'bounce') {
+                obs.x -= obs.vx;
+                obs.vy += 0.4; // Gravity
+                obs.y += obs.vy;
+                if (obs.y > obs.groundY) {
+                    obs.y = obs.groundY;
+                    obs.vy = -6; // Bounce
+                }
+            }
+
+            // Collision
+            if (player.invincibleTimer === 0 && checkCollision(player, obs, 10)) {
+                if (player.hasShield) {
+                    player.hasShield = false;
+                    player.invincibleTimer = 60; 
+                    playSound('shield-break');
+                    createParticles(player.x, player.y, 10, "💥");
+                } else {
+                    gameOver(); return; 
+                }
+            }
+            if (!obs.passed && player.x > obs.x + obs.width) {
+                obs.passed = true;
+                obstaclesPassed++;
+                score += 1; 
+                checkZoneChange();
+                updateUI();
+                playSound('score');
+            }
+            if (obs.x + obs.width < 0) obstacles.splice(i, 1);
+        }
+
+        // 4. Move Powerups
+        for (let i = powerups.length - 1; i >= 0; i--) {
+            let p = powerups[i];
+            p.x -= gameSpeed;
+            if (checkCollision(player, p, 0)) {
+                if (!player.hasShield) {
+                    player.hasShield = true; playSound('shield-get'); createParticles(player.x, player.y, 10, "✨");
+                } else {
+                    score += 5; updateUI(); createParticles(p.x, p.y, 5, "5️⃣"); playSound('score');
+                }
+                powerups.splice(i, 1); continue;
+            }
+            if (p.x + p.width < 0) powerups.splice(i, 1);
+        }
+
+        // 5. Particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.x += p.vx; p.y += p.vy; p.life -= 0.05; 
+            if (p.life <= 0) particles.splice(i, 1);
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Sand
+        ctx.fillStyle = '#E6C288';
+        ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
+        ctx.fillStyle = '#D4AF77';
+        for(let i=0; i<canvas.width; i+=40) {
+            ctx.fillRect(i - (frames % 40), canvas.height - GROUND_HEIGHT + 10, 5, 5);
+        }
+
+        // Draw Player
+        if (player.invincibleTimer > 0 && Math.floor(frames / 4) % 2 === 0) {} else {
+            ctx.font = `${player.originalHeight}px Arial`; // Always use original size font for consistency
+            ctx.save();
+            ctx.translate(player.x + player.width/2, player.y + player.height/2);
+            
+            if (player.isJumping) ctx.rotate(-0.2);
+            
+            if (player.isDucking) {
+                // Squash effect for ducking
+                ctx.scale(1.3, 0.6); 
+                ctx.translate(0, 15); // Adjust pos
+            }
+            
+            ctx.fillText(player.sprite, -player.width/2, player.height/2 - 5);
+            
+            // Draw Shield
+            if (player.hasShield) {
+                // Reset scale for shield
+                if (player.isDucking) {
+                    ctx.translate(0, -15);
+                    ctx.scale(1/1.3, 1/0.6);
+                }
+                
+                ctx.beginPath();
+                ctx.strokeStyle = 'rgba(255, 200, 100, 0.8)';
+                ctx.lineWidth = 3;
+                let shieldY = player.isDucking ? 10 : 0;
+                ctx.arc(0, shieldY, 30, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.fillStyle = 'rgba(255, 200, 100, 0.2)';
+                ctx.fill();
+            }
+            
+            ctx.restore();
+        }
+
+        // Draw Obstacles
+        for (let obs of obstacles) {
+            ctx.font = `${obs.height}px Arial`;
+            ctx.fillText(obs.emoji, obs.x, obs.y + obs.height);
+        }
+        for (let p of powerups) {
+            ctx.font = `${p.height}px Arial`;
+            ctx.fillText(p.emoji, p.x, p.y + p.height);
+        }
+        for (let p of particles) {
+            ctx.globalAlpha = p.life;
+            ctx.fillStyle = p.type === "sand" ? '#D4AF77' : '#FFFFFF';
+            if (p.type === "💥") {
+                 ctx.font = "20px Arial"; ctx.fillText("💥", p.x, p.y);
+            } else if (p.type === "5️⃣") {
+                 ctx.font = "20px Arial"; ctx.fillText("5️⃣", p.x, p.y);
+            } else if (p.type === "✨") {
+                 ctx.font = "20px Arial"; ctx.fillText("✨", p.x, p.y);
+            } else {
+                ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.globalAlpha = 1.0;
+        }
+    }
+
+    function gameOver() {
+        isPlaying = false;
+        isGameOver = true;
+        playSound('hit');
+        cancelAnimationFrame(animationId);
+        if (sonarGain) sonarGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+        if (musicGain) musicGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+
+        finalScoreEl.innerText = score;
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem('beachRunnerHighScore', highScore);
+            highScoreEl.innerText = highScore;
+            newRecordMsg.classList.remove('hidden');
+            playSound('highscore');
+        } else {
+            newRecordMsg.classList.add('hidden');
+        }
+        gameOverScreen.classList.remove('hidden');
+    }
+
+    function animate() {
+        if (!isPlaying) return;
+        update();
+        draw();
+        if (isPlaying) animationId = requestAnimationFrame(animate);
+    }
+
+    function initialDraw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#E6C288';
+        ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
+        ctx.font = `${player.height}px Arial`;
+        ctx.fillText(player.sprite, player.x, canvas.height - GROUND_HEIGHT - 5);
+    }
+    document.fonts.ready.then(initialDraw);
+</script>
+</body>
+</html>
